@@ -774,9 +774,8 @@ public:
               QFontMetrics fm(painter->font());
 
               painter->setPen(pen);
-              painter->setBrush(QBrush(Qt::black));
+              painter->setBrush(QBrush(QPalette::Window));
               painter->drawEllipse(QPoint(x1, y2), r, r);
-              painter->setFont(QFont("times",10));
 
               painter->drawText(x1-fm.width(author)/2, y2+painter->font().pointSize()/2, author);
             }
