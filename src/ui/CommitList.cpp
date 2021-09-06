@@ -704,6 +704,8 @@ public:
     QColor text = palette.color(group, textRole);
     QColor bright = palette.color(group, brightRole);
 
+    git::Commit commit = index.data(CommitRole).value<git::Commit>();
+
     painter->save();
     painter->setRenderHints(QPainter::Antialiasing);
 
@@ -734,22 +736,22 @@ public:
     for (int i = 0; i < columns.size(); ++i) {
       int x = rect.x();
       int y = rect.y();
-      int w = opt.fontMetrics.ascent();
+      int w = opt.fontMetrics.ascent()*1.30;
       int h = opt.rect.height();
       int h_2 = h / 2;
       int h_4 = h / 4;
 
       // radius
-      int r = w / 3;
+      int r = w/1.6;
 
       // xs
       int x1 = x + (w / 2);
       int x2 = x + w;
 
       // ys
-      int y1 = y + h_2 - r;
+      int y1 = y + h_2;
       int y2 = y + h_2;
-      int y3 = y + h_2 + r;
+      int y3 = y + h_2;
       int y4 = y + h_2 + h_4;
       int y5 = y + h;
 
@@ -764,10 +766,20 @@ public:
         }
 
         painter->setPen(pen);
+        painter->setBrush(QBrush());
         switch (segments.at(j).toInt()) {
           case Dot:
-            painter->setPen(dot);
-            painter->drawEllipse(QPoint(x1, y2), r, r);
+            {
+              QString author = commit.author().initials();
+              QFontMetrics fm(painter->font());
+
+              painter->setPen(pen);
+              painter->setBrush(QBrush(Qt::black));
+              painter->drawEllipse(QPoint(x1, y2), r, r);
+              painter->setFont(QFont("times",10));
+
+              painter->drawText(x1-fm.width(author)/2, y2+painter->font().pointSize()/2, author);
+            }
             break;
 
           case Top:
@@ -838,7 +850,6 @@ public:
       rect.setWidth(rect.width() - constants.hMargin);
 
     // Draw content.
-    git::Commit commit = index.data(CommitRole).value<git::Commit>();
     if (commit.isValid()) {
       const QFontMetrics &fm = opt.fontMetrics;
       QRect star = rect;
