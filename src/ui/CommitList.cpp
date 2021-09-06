@@ -769,11 +769,11 @@ public:
         painter->setBrush(QBrush());
         switch (segments.at(j).toInt()) {
           case Dot:
-            {
+            if (commit.isValid()) {
               QString author = commit.author().initials();
               QFontMetrics fm(painter->font());
 
-              painter->setPen(pen);
+              painter->setPen(QPen(Qt::gray, 2));
               painter->setBrush(QBrush(QPalette::Window));
               painter->drawEllipse(QPoint(x1, y2), r, r);
 
