@@ -859,127 +859,85 @@ public:
         date.date().toString(Qt::DefaultLocaleShortDate);
       int timestampWidth = fm.horizontalAdvance(timestamp);
 
-      if (compact) {
-        int maxWidthRefs = rect.width() * 0.5; // Max 50%
-        const int minWidthRefs = 50; // At least display the ellipsis
-        const int minWidthDesc = 100;
-        int minDisplayWidthDate = 350;
+      QRect rectContent = rect;
 
-        // Star always takes up its height on the right side.
-        star.setX(star.x() + star.width() - star.height());
-        star.setY(star.y() - constants.vMargin);
-        rect.setWidth(rect.width() - star.width());
+      int maxWidthRefs = rectContent.width() * 0.5; // Max 50%
+      const int minWidthRefs = 50; // At least display the ellipsis
+      const int minWidthDesc = 100;
+      int minDisplayWidthDate = 350;
 
-        // Draw commit id.
-        QString id = commit.id().toString().left(kShortIdSize);
-        int idWidth = maxShortIdWidth(fm);
+      // Draw date
+      int dateWidth = fm.boundingRect(timestamp).width();
 
-        QRect commitRect = rect;
-        commitRect.setX(commitRect.x() + commitRect.width() - idWidth);
-        painter->save();
-        painter->drawText(commitRect, Qt::AlignLeft, id);
-        painter->restore();
-        rect.setWidth(rect.width() - idWidth - constants.hMargin);
+      painter->save();
+      painter->setPen(bright);
+      painter->drawText(rectContent, Qt::AlignRight, timestamp);
+      painter->restore();
 
-        // Draw date. Only if it is not the same as previous?
-        if (rect.width() > minWidthDesc + timestampWidth + 8 &&
-            totalWidth > minDisplayWidthDate) {
-          painter->save();
-          painter->setPen(bright);
-          painter->drawText(rect, Qt::AlignRight, timestamp);
-          painter->restore();
-          rect.setWidth(rect.width() - timestampWidth - constants.hMargin);
-        }
+      // Draw commit id.
+      QRect commitRect = rectContent;
+      int lineSpacing = compact == true ? 1 : 3;
+      commitRect.setY(commitRect.y() + lineSpacing * constants.lineSpacing + constants.vMargin);
+      
+      QString id = commit.id().toString().left(kShortIdSize);
+      int idWidth = maxShortIdWidth(fm);
+      painter->save();
+      painter->drawText(commitRect, Qt::AlignRight, id);
+      painter->restore();
 
-        // Calculate remaining width for the references.
-        QRect ref = rect;
-        int refsWidth = ref.width() - minWidthDesc;
-        if (maxWidthRefs <= minWidthRefs) maxWidthRefs = minWidthRefs;
-        if (refsWidth < minWidthRefs) refsWidth = minWidthRefs;
-        if (refsWidth > maxWidthRefs) refsWidth = maxWidthRefs;
-        ref.setWidth(refsWidth);
+      int maxDateOrIdWith = dateWidth > idWidth ? dateWidth : idWidth;
 
-        // Draw references.
-        int badgesWidth = rect.x();
-        QList<Badge::Label> refs = mRefs.value(commit.id());
-        if (!refs.isEmpty())
-          badgesWidth = Badge::paint(painter, refs, ref, &opt, Qt::AlignLeft);
-        rect.setX(badgesWidth); // Comes right after the badges
+      // Calculate remaining width for references, messages and star
+      rectContent.setWidth(rectContent.width() - maxDateOrIdWith - 2*constants.hMargin);
 
-        // Draw message.
-        painter->save();
-        painter->setPen(bright);
-        QString msg = commit.summary(git::Commit::SubstituteEmoji);
-        QString elidedText = fm.elidedText(msg, Qt::ElideRight, rect.width());
-        painter->drawText(rect, Qt::ElideRight, elidedText);
-        painter->restore();
+      // Star always takes up its height on the right side.
+      star = rectContent;
+      star.setX(star.x() + star.width() - star.height());
+      star.setY(star.y() - constants.vMargin + star.height() / 4);
+      star.setHeight(star.height()*3/4);
+      rectContent.setWidth(rectContent.width() - star.width());
 
-      } else {
-        // Draw Name.
-        QString name = commit.author().name();
-        painter->save();
-        QFont bold = opt.font;
-        bold.setBold(true);
-        painter->setFont(bold);
-        painter->drawText(rect, Qt::AlignLeft, name);
-        painter->restore();
+      int lineAvailable = compact == true ? 2 : 4;
 
-        // Draw date.
-        if (rect.width() > fm.horizontalAdvance(name) + timestampWidth + 8) {
-          painter->save();
-          painter->setPen(bright);
-          painter->drawText(rect, Qt::AlignRight, timestamp);
-          painter->restore();
-        }
+      // Draw references.
+      QList<Badge::Label> refs = mRefs.value(commit.id());
+      if (!refs.isEmpty()) {
+        int badgesWidth = Badge::paint(painter, refs, rectContent, &opt, Qt::AlignLeft);
 
-        rect.setY(rect.y() + constants.lineSpacing + constants.vMargin);
-
-        // Draw id.
-        QString id = commit.shortId();
-        painter->save();
-        painter->drawText(rect, Qt::AlignLeft, id);
-        painter->restore();
-
-        // Draw references.
-        QList<Badge::Label> refs = mRefs.value(commit.id());
-        if (!refs.isEmpty()) {
-          QRect refsRect = rect;
-          refsRect.setX(refsRect.x() + fm.boundingRect(id).width() + 6);
-          Badge::paint(painter, refs, refsRect, &opt);
-        }
-
-        rect.setY(rect.y() + constants.lineSpacing + constants.vMargin);
-
-        // Divide remaining rectangle.
-        star = rect;
-        star.setX(star.x() + star.width() - star.height());
-        QRect text = rect;
-        text.setWidth(text.width() - star.width());
-
-        // Draw message.
-        painter->save();
-        painter->setPen(bright);
-        QString msg = commit.summary(git::Commit::SubstituteEmoji);
-        QTextLayout layout(msg, painter->font());
-        layout.beginLayout();
-
-        QTextLine line = layout.createLine();
-        if (line.isValid()) {
-          int width = text.width();
-          line.setLineWidth(width);
-          int len = line.textLength();
-          painter->drawText(text, Qt::AlignLeft, msg.left(len));
-
-          if (len < msg.length()) {
-            text.setY(text.y() + constants.lineSpacing);
-            QString elided = fm.elidedText(msg.mid(len), Qt::ElideRight, width);
-            painter->drawText(text, Qt::AlignLeft, elided);
-          }
-        }
-
-        layout.endLayout();
-        painter->restore();
+        rectContent.setY(rectContent.y() + constants.lineSpacing + constants.vMargin);
+        lineAvailable --;
       }
+
+      // Draw message.
+      painter->save();
+      painter->setPen(bright);
+      QString msg = commit.summary(git::Commit::SubstituteEmoji);
+      QTextLayout layout(msg, painter->font());
+
+      int width = rectContent.width();
+
+      layout.beginLayout();
+
+      QTextLine line = layout.createLine();
+      while (line.isValid() && lineAvailable != 0 && msg.length() != 0) {
+        lineAvailable --;
+        line.setLineWidth(width);
+        int len = line.textLength();
+        
+        QString lineText = "";
+        if (lineAvailable != 0) {
+          lineText = msg.left(len);
+          msg = msg.mid(len);
+        } else {
+          lineText = fm.elidedText(msg, Qt::ElideRight, width);
+        }
+
+        painter->drawText(rectContent, Qt::AlignLeft, lineText);
+        rectContent.setY(rectContent.y() + constants.lineSpacing);
+      }
+
+      layout.endLayout();
+      painter->restore();
 
       // Draw star.
       bool starred = commit.isStarred();
@@ -1042,7 +1000,7 @@ public:
 #endif
 
     // Draw separator line.
-    if (!compact && selected == nextSelected) {
+    if (selected == nextSelected) {
       painter->save();
       painter->setRenderHints(QPainter::Antialiasing, false);
       painter->setPen(selected ? text : opt.palette.color(QPalette::Dark));
@@ -1061,7 +1019,7 @@ public:
     LayoutConstants constants = layoutConstants(compact);
 
     int lineHeight = constants.lineSpacing + constants.vMargin;
-    return QSize(0, lineHeight * (compact ? 1 : 4));
+    return QSize(0, lineHeight * (compact ? 2 : 4));
   }
 
   QRect decorationRect(
