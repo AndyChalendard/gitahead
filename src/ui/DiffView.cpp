@@ -270,68 +270,10 @@ class EditButton : public Button
   Q_OBJECT
 
 public:
-  EditButton(
-    const git::Patch &patch,
-    int index,
-    bool binary,
-    bool lfs,
-    QWidget *parent = nullptr)
+  EditButton(QWidget *parent = nullptr)
     : Button(parent)
   {
     setObjectName("EditButton");
-
-    // Add edit button menu.
-    QMenu *menu = new QMenu(this);
-
-    QString name = patch.name();
-    RepoView *view = RepoView::parentView(this);
-
-    // Calculate starting line numbers.
-    int oldLine = -1;
-    int newLine = -1;
-    if (index >= 0 && patch.lineCount(index) > 0) {
-      oldLine = patch.lineNumber(index, 0, git::Diff::OldFile);
-      newLine = patch.lineNumber(index, 0, git::Diff::NewFile);
-    }
-
-    if (view->repo().workdir().exists(name)) {
-      QAction *action = menu->addAction(tr("Edit Working Copy"));
-      connect(action, &QAction::triggered, [this, view, name, newLine] {
-        view->edit(name, newLine);
-      });
-    }
-
-    // Add revision edit actions.
-    QList<git::Commit> commits = view->commits();
-    git::Commit commit = !commits.isEmpty() ? commits.first() : git::Commit();
-    git::Blob newBlob = patch.blob(git::Diff::NewFile);
-    if (newBlob.isValid()) {
-      QAction *action = menu->addAction(tr("Edit New Revision"));
-      connect(action, &QAction::triggered,
-      [this, view, name, newLine, newBlob, commit] {
-        view->openEditor(name, newLine, newBlob, commit);
-      });
-    }
-
-    git::Blob oldBlob = patch.blob(git::Diff::OldFile);
-    if (oldBlob.isValid()) {
-      if (commit.isValid()) {
-        QList<git::Commit> parents = commit.parents();
-        if (!parents.isEmpty())
-          commit = parents.first();
-      }
-
-      QAction *action = menu->addAction(tr("Edit Old Revision"));
-      connect(action, &QAction::triggered,
-      [this, view, name, oldLine, oldBlob, commit] {
-        view->openEditor(name, oldLine, oldBlob, commit);
-      });
-    }
-
-    setEnabled(!menu->isEmpty() && !binary && !lfs);
-    setPopupMode(ToolButtonPopupMode::InstantPopup);
-
-    setMenu(menu);
   }
 
 protected:
@@ -739,8 +681,22 @@ public:
         });
       }
 
-      EditButton *edit = new EditButton(patch, index, false, lfs, this);
+      EditButton *edit = new EditButton(this);
       edit->setToolTip(HunkWidget::tr("Edit Hunk"));
+      connect(edit, &EditButton::clicked, [this, patch, index] {
+        QString name = patch.name();
+
+        RepoView *view = RepoView::parentView(this);
+        if (view->repo().workdir().exists(name)) {
+          // Calculate starting line numbers.
+          int newLine = -1;
+          if (index >= 0 && patch.lineCount(index) > 0) {
+            newLine = patch.lineNumber(index, 0, git::Diff::NewFile);
+          }
+
+          view->edit(name, newLine);
+        }
+      });
 
       // Add discard button.
       DiscardButton *discard = nullptr;
@@ -1738,9 +1694,18 @@ public:
       }
 
       // Add edit button.
-      mEdit = new EditButton(patch, -1, binary, lfs, this);
+      mEdit = new EditButton(this);
       mEdit->setToolTip(FileWidget::tr("Edit File"));
       buttons->addWidget(mEdit);
+
+      connect(mEdit, &EditButton::clicked, [this] {
+        QString name = mPatch.name();
+
+        RepoView *view = RepoView::parentView(this);
+        if (view->repo().workdir().exists(name)) {
+          view->edit(name, 0);
+        }
+      });
 
       // Add discard button.
       if (diff.isStatusDiff() && !submodule && !patch.isConflicted()) {
