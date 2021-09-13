@@ -302,31 +302,32 @@ public:
     }
 
     // Add revision edit actions.
-    QList<git::Commit> commits = view->commits();
-    git::Commit commit = !commits.isEmpty() ? commits.first() : git::Commit();
-    git::Blob newBlob = patch.blob(git::Diff::NewFile);
-    if (newBlob.isValid()) {
-      QAction *action = menu->addAction(tr("Edit New Revision"));
-      connect(action, &QAction::triggered,
-      [this, view, name, newLine, newBlob, commit] {
+    QAction *actionNewRev = menu->addAction(tr("Edit New Revision"));
+    connect(actionNewRev, &QAction::triggered, [this, view, name, patch, newLine] {
+      QList<git::Commit> commits = view->commits();
+      git::Commit commit = !commits.isEmpty() ? commits.first() : git::Commit();
+      git::Blob newBlob = patch.blob(git::Diff::NewFile);
+
+      if (newBlob.isValid()) {
         view->openEditor(name, newLine, newBlob, commit);
-      });
-    }
-
-    git::Blob oldBlob = patch.blob(git::Diff::OldFile);
-    if (oldBlob.isValid()) {
-      if (commit.isValid()) {
-        QList<git::Commit> parents = commit.parents();
-        if (!parents.isEmpty())
-          commit = parents.first();
       }
+    });
 
-      QAction *action = menu->addAction(tr("Edit Old Revision"));
-      connect(action, &QAction::triggered,
-      [this, view, name, oldLine, oldBlob, commit] {
+    QAction *actionOldRev = menu->addAction(tr("Edit Old Revision"));
+    connect(actionOldRev, &QAction::triggered, [this, view, name, patch, oldLine] {
+      QList<git::Commit> commits = view->commits();
+      git::Commit commit = !commits.isEmpty() ? commits.first() : git::Commit();
+      git::Blob oldBlob = patch.blob(git::Diff::OldFile);
+
+      if (oldBlob.isValid()) {
+        if (commit.isValid()) {
+          QList<git::Commit> parents = commit.parents();
+          if (!parents.isEmpty())
+            commit = parents.first();
+        }
         view->openEditor(name, oldLine, oldBlob, commit);
-      });
-    }
+      }
+    });
 
     setEnabled(!menu->isEmpty() && !binary && !lfs);
     setPopupMode(ToolButtonPopupMode::InstantPopup);
