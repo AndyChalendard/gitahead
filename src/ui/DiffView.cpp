@@ -644,6 +644,7 @@ public:
       if (patch.isConflicted()) {
         mSave = new QToolButton(this);
         mSave->setObjectName("ConflictSave");
+        mSave->setStyleSheet(kButtonStyleFmt.arg(QColor("#FF0000").name(), QColor("#BB0000").name()));
         mSave->setText(HunkWidget::tr("Save"));
 
         mUndo = new QToolButton(this);
