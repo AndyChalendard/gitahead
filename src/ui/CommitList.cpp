@@ -33,6 +33,9 @@
 #include <QApplication>
 #include <QFileInfo>
 #include <QMenu>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QNetworkRequest>
 #include <QPainter>
 #include <QPainterPath>
 #include <QPushButton>
@@ -664,6 +667,59 @@ private:
   QList<git::Commit> mCommits;
 };
 
+class PictureProfil : public QObject {
+public:
+  static PictureProfil* getPictureProfil(const QString email, int size) {
+    if (mCache.contains(email)) {
+      return mCache.value(email);
+    }
+
+    PictureProfil* result = new PictureProfil(email, size);
+    mCache.insert(email, result);
+    return result;
+  }
+
+  const QPixmap getPixmap() const {
+    return mPicture;
+  }
+
+  const bool getIsLoad() const {
+    return isLoaded;
+  }
+
+private:
+  const QString kUrl = "http://www.gravatar.com/avatar/%1?s=%2&d=404";
+
+  QNetworkAccessManager mMgr;
+
+  bool isLoaded = false;
+  QPixmap mPicture;
+
+  PictureProfil(const QString email, int size) {
+    connect(&mMgr, &QNetworkAccessManager::finished, this, &PictureProfil::setPicture);
+
+    QByteArray emailArray = email.trimmed().toLower().toUtf8();
+    QByteArray hash = QCryptographicHash::hash(emailArray, QCryptographicHash::Md5);
+
+    QByteArray key = hash.toHex();
+
+    QUrl url(kUrl.arg(QString::fromUtf8(hash.toHex()), QString::number(size)));
+    QNetworkReply *reply = mMgr.get(QNetworkRequest(url));
+  }
+
+  void setPicture(QNetworkReply *reply) {
+    if (reply->error() == QNetworkReply::NoError) {
+      mPicture.loadFromData(reply->readAll());
+      isLoaded = true;
+    }
+
+    reply->deleteLater();
+  }
+
+  static QMap<QString,PictureProfil*> mCache;
+};
+QMap<QString,PictureProfil*> PictureProfil::mCache;
+
 class CommitDelegate : public QStyledItemDelegate
 {
 public:
@@ -773,11 +829,27 @@ public:
               QString author = commit.author().initials();
               QFontMetrics fm(painter->font());
 
+              painter->save();
+
               painter->setPen(QPen(Qt::gray, 2));
               painter->setBrush(QBrush(QPalette::Window));
               painter->drawEllipse(QPoint(x1, y2), r, r);
 
-              painter->drawText(x1-fm.width(author)/2, y2+painter->font().pointSize()/2, author);
+              int rContent = r*0.97;
+
+              QPainterPath path;
+              path.addEllipse(QPoint(x1, y2), rContent, rContent);
+              painter->setClipPath(path);
+
+              PictureProfil* picture = PictureProfil::getPictureProfil(commit.author().email(), 2*rContent);
+
+              if (picture->getIsLoad() == true) {
+                painter->drawPixmap(QRect(x1-rContent, y2-rContent, 2*rContent, 2*rContent), picture->getPixmap());
+              } else {
+                painter->drawText(x1-fm.width(author)/2, y2+painter->font().pointSize()/2, author);
+              }
+
+              painter->restore();
             }
             break;
 
