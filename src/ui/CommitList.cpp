@@ -831,21 +831,23 @@ public:
 
               painter->save();
 
-              painter->setPen(QPen(Qt::gray, 2));
-              painter->setBrush(QBrush(QPalette::Window));
-              painter->drawEllipse(QPoint(x1, y2), r, r);
-
               int rContent = r*0.97;
 
-              QPainterPath path;
-              path.addEllipse(QPoint(x1, y2), rContent, rContent);
-              painter->setClipPath(path);
-
               PictureProfil* picture = PictureProfil::getPictureProfil(commit.author().email(), 2*rContent);
-
               if (picture->getIsLoad() == true) {
+                painter->setPen(QPen(Qt::gray, 2));
+                painter->setBrush(QBrush(Qt::black));
+                painter->drawEllipse(QPoint(x1, y2), r, r);
+
+                QPainterPath path;
+                path.addEllipse(QPoint(x1, y2), rContent, rContent);
+                painter->setClipPath(path);
+
                 painter->drawPixmap(QRect(x1-rContent, y2-rContent, 2*rContent, 2*rContent), picture->getPixmap());
               } else {
+                painter->setPen(QPen(Qt::black, 2));
+                painter->setBrush(QBrush(color));
+                painter->drawEllipse(QPoint(x1, y2), r, r);
                 painter->drawText(x1-fm.width(author)/2, y2+painter->font().pointSize()/2, author);
               }
 
