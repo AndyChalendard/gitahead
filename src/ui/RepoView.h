@@ -69,7 +69,7 @@ public:
 
   Q_DECLARE_FLAGS(MergeFlags, MergeFlag);
 
-  RepoView(const git::Repository &repo, MainWindow *parent);
+  RepoView(const git::Repository &repo, bool landscape, MainWindow *parent);
   virtual ~RepoView();
 
   //clean

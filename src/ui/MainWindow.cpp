@@ -253,7 +253,7 @@ RepoView *MainWindow::addTab(const git::Repository &repo)
     }
   }
 
-  RepoView *view = new RepoView(repo, this);
+  RepoView *view = new RepoView(repo, false, this);
   git::RepositoryNotifier *notifier = repo.notifier();
   connect(notifier, &git::RepositoryNotifier::referenceUpdated,
           this, &MainWindow::updateInterface);

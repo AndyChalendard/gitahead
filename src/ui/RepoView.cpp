@@ -151,7 +151,7 @@ private:
 
 } // anon. namespace
 
-RepoView::RepoView(const git::Repository &repo, MainWindow *parent)
+RepoView::RepoView(const git::Repository &repo, bool landscape, MainWindow *parent)
   : QSplitter(Qt::Vertical, parent), mRepo(repo)
 {
   Application::track("RepoView");
@@ -377,8 +377,10 @@ RepoView::RepoView(const git::Repository &repo, MainWindow *parent)
   QSplitter *splitter = new QSplitter(Qt::Horizontal, this);
   splitter->setChildrenCollapsible(false);
   splitter->setHandleWidth(0);
-  splitter->addWidget(sidebar);
-  splitter->addWidget(mDetails);
+  if (landscape == true) {
+    splitter->addWidget(sidebar);
+    splitter->addWidget(mDetails);
+  }
   splitter->setStretchFactor(0, 1);
   splitter->setStretchFactor(1, 3);
   connect(splitter, &QSplitter::splitterMoved, [this, splitter] {
@@ -427,6 +429,19 @@ RepoView::RepoView(const git::Repository &repo, MainWindow *parent)
           this, &RepoView::startLogTimer);
   connect(mLogView->model(), &QAbstractItemModel::dataChanged,
           this, &RepoView::startLogTimer);
+
+  if (landscape == false) {
+    QWidget *widget1 = new QWidget(this);
+    QVBoxLayout *vLayout1 = new QVBoxLayout(this);
+    QSplitter *splitter1 = new QSplitter(Qt::Vertical, this);
+
+    splitter1->addWidget(sidebar);
+    splitter1->addWidget(mDetails);
+
+    vLayout1->addWidget(splitter1);
+    widget1->setLayout(vLayout1);
+    splitter->addWidget(widget1);
+  }
 
   addWidget(splitter);
   addWidget(mLogView);
